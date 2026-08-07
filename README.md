@@ -1,56 +1,54 @@
-# Amex Profitability Score — Case Challenge
+# American Express Campus Challenge 2026 - Customer Profitability Model
 
-This repository contains my submission for the Amex Profitability Score case challenge.
+[![Accuracy](https://img.shields.io/badge/Accuracy-0.841-brightgreen.svg)]()
+[![Dataset](https://img.shields.io/badge/Dataset-500K_Customers-blue.svg)]()
+[![Methodology](https://img.shields.io/badge/Methodology-Deterministic_Finance_Modeling-orange.svg)]()
 
-## Objective
+## 📌 Project Overview
+This repository contains my solution for the **American Express Campus Challenge 2026**. The objective was to predict the top 20% most profitable customers from a highly anonymized and masked dataset of 500,000 credit card accounts. 
 
-Build an interpretable and reproducible approach to score customers by expected profitability. The goal is to provide a model and supporting analysis that help prioritize customers for marketing and retention while explaining the drivers of profitability.
+Instead of relying on black-box machine learning parameter tuning, this solution achieves a top-tier leaderboard score of **0.841** (a 29% improvement over baseline) by engineering a deterministic, business-driven profitability framework grounded in credit card economics and CECL (Current Expected Credit Losses) risk methodologies.
 
-## What’s in this repo
+## 🧠 Core Methodology
 
-- Amex/1st submission.xlsx — the primary deliverable (workbook) containing my analysis and results.
-- README.md — this file: high-level summary, how to inspect the submission, and next steps.
+### 1. The P&L Profitability Equation
+The model evaluates trailing 12-month profitability for each customer using a structured formula mapping the 23 anonymized features to real-world financial drivers:
 
-If you expect code, notebooks, or data files in addition to the workbook, please let me know and I can add a reproducible pipeline (Python/R notebooks, requirements, and scripts).
+$$ \text{Profitability} = \left[ \text{NII} + \text{NTM} + \text{Fee Income} - \text{ECL} - \text{Benefit Costs} - \text{Servicing Costs} \right] \times \text{Retention Factor} $$
 
-## High-level approach
+*   **Net Interest Income (NII):** Yield calculated at 42% on revolving debt balances.
+*   **Expected Credit Loss (ECL):** Modeled using Basel/CECL frameworks (Probability of Default × Exposure at Default × Loss Given Default), applying a heavily amplified 2.5x risk penalty to actively purge toxic debt from the top 20%.
+*   **Net Transaction Margin (NTM):** Calculated assuming a 2.5% interchange fee on categorical spend.
+*   **Accrued Rewards Liability:** Shifted rewards costing from trailing raw redemptions to an *expected accrual liability* (5x on travel/lodging, 1x on other categories) to smooth out lumpy redemption behavior and accurately value long-term point hoarders.
 
-1. Data exploration and quality checks to understand distributions, missingness, and relationships.
-2. Feature engineering to convert transaction and account-level signals into predictive features (recency, frequency, monetary, tenure, product usage, etc.).
-3. Model selection and validation using cross-validation and out-of-sample testing. Models considered typically include gradient-boosted trees (e.g., XGBoost / LightGBM), regularized linear models, and simple baselines.
-4. Explainability and stability checks using feature importance and model-agnostic explainability tools (SHAP or similar) to surface the top drivers of predicted profitability.
-5. Business translation: convert model outputs into a customer scoring framework and provide actionable recommendations.
+### 2. Resolving NMAR Missingness & Multicollinearity
+The dataset featured structural Not Missing At Random (NMAR) data—specifically in categorical spend ($f_6-f_{10}$). 
+*   **The Problem:** Zero-filling missing categories artificially zeroes out transaction margins, unfairly penalizing high-spending transactors.
+*   **The Solution:** Implemented decile-conditioned imputation using Total Spend ($f_5$) as a fallback. If a customer's sub-categories sum to 0, the model falls back to evaluating $f_5$ to rescue masked "Mega-Spenders."
+*   **Multicollinearity:** Removed redundant lending line features ($r > 0.90$) to prevent double-counting and stabilize the final scoring coefficients.
 
-## How to view the submission
+## 📊 Behavioral Customer Segmentation
+Through deep exploratory data analysis, the dataset was clustered into 7 behavioral archetypes based on debt balance ($f_1$), churn signals ($f_2, f_3$), and default risk ($f_{11}$). The mathematical weights were systematically tested and calibrated to boundary-optimize the Top 20% inclusion of specific clusters:
 
-Open the workbook at:
+| Cluster Archetype | Character Profile | Strategy |
+| :--- | :--- | :--- |
+| **R3: Heavy Clean Revolver** | High balance, near-zero risk. | **Prioritize** (Core NII drivers) |
+| **T1: Clean Transactor** | $0 debt, high transaction volume. | **Prioritize** (Rescued via conditional NTM imputation) |
+| **R5: Heavy Risky Revolver** | High balance, high risk score, collection calls. | **Purge** (Removed via 2.5x ECL weight + strict retention decay) |
+| **R1: Small Clean Revolver** | Modest balances, clean history. | *Neutral* |
+| **R4: Heavy Clean + Cancel**| Good customers flashing churn intent. | *Discounted* via Retention Factor |
 
-Amex/1st submission.xlsx
+## 🚀 Results & Impact
+*   **Final Public Leaderboard Score:** 0.841
+*   **Baseline Improvement:** +29% (over initial linear baseline of 0.65).
+*   **Strategic Win:** Successfully closed a 19-point accuracy gap purely through evidence-based hypothesis testing of financial parameters (interest yield, default penalties) rather than stochastic ML tuning.
 
-The workbook contains the analysis, model outputs, and recommendations from my case study. If you’d like the analysis reproduced as executable code (so the steps are fully reproducible and parameterized), I can add a scripts/ or notebooks/ folder with the necessary files.
+## 📂 Repository Structure
+*   `Amex_R1_Submission_V7_Accrual_NTM.xlsx`: The final submission file containing predictions and the written profitability framework.
+*   `profitability_model.py`: The Python script containing the deterministic calculation engine, imputation logic, and ranking algorithms.
+*   *(Note: The 500K customer dataset `6a3eb196bc7a3_campus_challenge_r1_data.csv` is excluded from this repository to comply with competition data-sharing rules).*
 
-## Results & recommendations (summary)
-
-- The model identifies a small set of high-signal features that explain most of the model performance (e.g., monetary and behavioral signals).  
-- Deploy the scoring model as a batch process to score the customer base periodically and use scores for targeted campaigns.  
-- Monitor model drift and re-train on a cadence informed by business changes (monthly/quarterly depending on volume).
-
-(If you want a more detailed results section with metrics, feature lists, and charts, I can extract those from the workbook and add them to this README.)
-
-## Next steps / Reproducibility
-
-If you want this submission to be fully reproducible from raw data, I can:
-
-- Add a requirements.txt and a small conda environment file.
-- Add Jupyter notebooks (or Python scripts) that implement the EDA, feature engineering, training, and evaluation pipeline.
-- Containerize the pipeline with Docker for portability.
-
-Tell me which format you prefer (notebooks, scripts, or a packaged pipeline) and I’ll add it.
-
-## Author
-
-ramshankar-19
-
-## License
-
-This repository is provided for the case challenge. If you’d like a license added, tell me which one (MIT, Apache-2.0, etc.) and I’ll include it.
+## ⚙️ How to Run
+1. Ensure you have `pandas` and `numpy` installed.
+2. Place the competition CSV dataset in the root directory.
+3. Run `python profitability_model.py` to calculate financial components, impute missing values, and generate the ranked Excel output.
